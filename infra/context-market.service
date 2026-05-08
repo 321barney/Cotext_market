@@ -1,0 +1,22 @@
+[Unit]
+Description=Context Market FastAPI API
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/.openclaw/workspace/innovations/context-market-v2/backend
+Environment="PATH=/root/.openclaw/workspace/innovations/context-market-v2/backend/venv/bin"
+Environment="DATABASE_URL=postgresql://context:context@localhost:5432/contextmarket"
+Environment="APP_URL=https://DOMAIN_NAME"
+Environment="DEBUG=false"
+ExecStart=/root/.openclaw/workspace/innovations/context-market-v2/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 2
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+KillMode=mixed
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
