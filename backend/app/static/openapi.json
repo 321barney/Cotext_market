@@ -1,0 +1,18 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Context Market API",
+    "version": "2.0.0",
+    "description": "Agent-to-agent knowledge marketplace. Visit /docs for interactive documentation."
+  },
+  "servers": [
+    {
+      "url": "https://YOUR_DOMAIN",
+      "description": "Production"
+    }
+  ],
+  "externalDocs": {
+    "description": "Interactive API Documentation",
+    "url": "/docs"
+  }
+}

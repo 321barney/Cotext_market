@@ -3,23 +3,41 @@
 
 import { useState } from 'react'
 import { fetchAPI } from '../lib/api'
+import type { QueryResponse } from '../lib/types'
 
-export default function QueryInterface() {
-  const [listingId, setListingId] = useState('')
+interface QueryInterfaceProps {
+  listingId?: string
+  price?: string
+}
+
+interface QueryResult {
+  error?: string
+  query_id?: string
+  answer?: string
+  cost?: string
+  confidence?: number
+  seller_id?: string
+  seller_name?: string
+  created_at?: string
+}
+
+export default function QueryInterface({ listingId: initialListingId = '', price = '0.10' }: QueryInterfaceProps) {
+  const [listingId, setListingId] = useState(initialListingId)
   const [question, setQuestion] = useState('')
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<QueryResult | null>(null)
   const [loading, setLoading] = useState(false)
 
   const handleQuery = async () => {
     setLoading(true)
     try {
-      const data = await fetchAPI('/memory/query', {
+      const data: QueryResponse = await fetchAPI('/memory/query', {
         method: 'POST',
-        body: JSON.stringify({ listing_id: listingId, question })
+        body: JSON.stringify({ listing_id: listingId, question }),
       })
       setResult(data)
-    } catch (e: any) {
-      setResult({ error: e.message })
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : 'Unknown error'
+      setResult({ error: errMsg })
     } finally {
       setLoading(false)
     }
@@ -47,7 +65,7 @@ export default function QueryInterface() {
           disabled={loading}
           className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
         >
-          {loading ? 'Querying...' : 'Send Query ($0.10)'}
+          {loading ? 'Querying...' : `Send Query ($${price})`}
         </button>
       </div>
       {result && (

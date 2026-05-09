@@ -1,0 +1,77 @@
+# ─────────────────────────────────────────────
+# Context Market - Global .gitignore
+# NEVER commit secrets, build artifacts, or OS files
+# ─────────────────────────────────────────────
+
+# ── Python ──────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+.venv*/
+
+# Python tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.cover
+*.egg
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ── Node / Frontend ─────────────────────────
+node_modules/
+.next/
+out/
+npm-debug.log*
+yarn-error.log*
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.pnp.*
+
+# ── Environment / Secrets ───────────────────
+.env
+.env.local
+.env.*.local
+.env.production
+!.env.example
+secrets.json
+*.pem
+*.key
+
+# ── Logs ────────────────────────────────────
+logs/
+*.log
+log/
+
+# ── OS Generated ────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ── IDE / Editor ────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+
+# ── Contract Deployments ────────────────────
+deployed.json
+deployed_test.json
+
+# ── Docker ──────────────────────────────────
+*.env.docker

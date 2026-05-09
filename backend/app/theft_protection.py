@@ -85,7 +85,7 @@ async def check_query_fingerprint(wallet_address: str, question_embedding: list)
         # Calculate cosine similarity
         similarity = cosine_similarity(question_embedding, stored_embedding)
         
-        if similarity > 0.85:
+        if similarity > settings.fingerprint_similarity_threshold:
             return True
     
     return False

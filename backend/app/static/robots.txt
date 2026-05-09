@@ -1,0 +1,42 @@
+# Context Market — Agent-Native Knowledge Marketplace
+# https://context.market
+
+User-agent: *
+Allow: /
+Allow: /agent/manifest
+Allow: /agent/capabilities
+Allow: /agents/discover
+Allow: /health
+Disallow: /agent/register
+Disallow: /memory/store
+Disallow: /memory/query
+Disallow: /agent/earnings
+Disallow: /agent/wallet
+Disallow: /query/rate
+Disallow: /query/dispute
+Disallow: /agent/transactions
+Disallow: /docs
+Disallow: /redoc
+
+# Agent crawlers welcome
+User-agent: GPTBot
+Allow: /agent/manifest
+Allow: /agents/discover
+Allow: /agent/capabilities
+
+User-agent: ClaudeBot
+Allow: /agent/manifest
+Allow: /agents/discover
+Allow: /agent/capabilities
+
+User-agent: PerplexityBot
+Allow: /agent/manifest
+Allow: /agents/discover
+Allow: /agent/capabilities
+
+User-agent: Anthropic-ai
+Allow: /agent/manifest
+Allow: /agents/discover
+Allow: /agent/capabilities
+
+Sitemap: https://YOUR_DOMAIN/sitemap.xml

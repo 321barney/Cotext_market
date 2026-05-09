@@ -1,9 +1,38 @@
-/* Root layout with navigation */
+import type { Metadata } from 'next'
+import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
+import Navbar from '@/components/ui/Navbar'
+import Footer from '@/components/ui/Footer'
 
-export const metadata = {
-  title: 'Context Market',
-  description: 'Agent knowledge marketplace',
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-geist-sans',
+  display: 'swap',
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-geist-mono',
+  display: 'swap',
+})
+
+export const metadata: Metadata = {
+  title: 'Context Market — Agent Knowledge Marketplace',
+  description:
+    'Autonomous agents trade verified knowledge on-chain. Browse agent providers, query knowledge listings, and track marketplace activity.',
+  keywords: [
+    'AI agents',
+    'knowledge marketplace',
+    'agent-to-agent',
+    'blockchain',
+    'USDC',
+    'on-chain intelligence',
+  ],
+  openGraph: {
+    title: 'Context Market — Agent Knowledge Marketplace',
+    description: 'Autonomous agents trade verified knowledge on-chain.',
+    type: 'website',
+  },
 }
 
 export default function RootLayout({
@@ -12,20 +41,18 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className="bg-gray-50 min-h-screen">
-        <nav className="bg-white border-b px-6 py-4">
-          <div className="max-w-6xl mx-auto flex items-center justify-between">
-            <h1 className="text-xl font-bold">Context Market</h1>
-            <div className="flex gap-6 text-sm">
-              <a href="/" className="text-gray-600 hover:text-gray-900">Dashboard</a>
-              <a href="/listings" className="text-gray-600 hover:text-gray-900">Listings</a>
-              <a href="/transactions" className="text-gray-600 hover:text-gray-900">Transactions</a>
-              <a href="/settings" className="text-gray-600 hover:text-gray-900">Settings</a>
-            </div>
-          </div>
-        </nav>
-        <main className="max-w-6xl mx-auto p-6">{children}</main>
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+      <body
+        className="min-h-screen antialiased"
+        style={{
+          backgroundColor: 'var(--bg-primary)',
+          color: 'var(--text-primary)',
+          fontFamily: 'var(--font-geist-sans), system-ui, -apple-system, sans-serif',
+        }}
+      >
+        <Navbar />
+        <main className="pt-16 min-h-screen">{children}</main>
+        <Footer />
       </body>
     </html>
   )

@@ -14,9 +14,11 @@ from typing import Optional, Tuple
 from datetime import datetime, timedelta
 from fastapi import HTTPException
 from app.database import db
+from app.config import get_settings
+
+settings = get_settings()
 
 # Contract setup
-USDC_CONTRACT_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 BASE_RPC = os.getenv("BASE_RPC", "https://mainnet.base.org")
 
 # Lazy-loaded globals (not loaded at import time)
@@ -238,9 +240,9 @@ async def settle_query(
         settle_txn = escrow.functions.settle(query_bytes, seller_checksum).build_transaction({
             'from': account.address,
             'nonce': w3.eth.get_transaction_count(account.address),
-            'gas': 200000,
-            'gasPrice': w3.to_wei('0.1', 'gwei'),
-            'chainId': 8453
+            'gas': settings.gas_limit,
+            'gasPrice': w3.to_wei(str(settings.gas_price_gwei), 'gwei'),
+            'chainId': settings.base_chain_id
         })
         
         # Sign and send
@@ -255,20 +257,34 @@ async def settle_query(
             return False, f"Transaction failed: {tx_hash.hex()}"
         
         tx_hash_hex = tx_hash.hex()
-        
+
         # Log to query table
         await db.execute(
             """
-            UPDATE queries 
+            UPDATE queries
             SET status = 'settled', tx_hash = $1, settled_at = NOW()
             WHERE id = $2
             """,
             tx_hash_hex, query_id
         )
-        
+
+        # Record settlement in transaction_history (immutable audit trail)
+        try:
+            from app.transactions import record_settlement_transaction
+            platform_fee = amount_usdc * Decimal("0.10")  # 10% platform fee
+            seller_amount = amount_usdc - platform_fee
+            await record_settlement_transaction(
+                query_id=query_id,
+                amount_usdc=amount_usdc,
+                fee_usdc=platform_fee,
+                tx_hash=tx_hash_hex
+            )
+        except Exception as e:
+            logger.warning(f"Failed to record settlement transaction: {e}")
+
         # Log to settlement log (masked wallet)
         _log_settlement(query_id, _mask_wallet(seller_wallet), amount_usdc, tx_hash_hex)
-        
+
         return True, tx_hash_hex
         
     except Exception as e:
@@ -444,9 +460,9 @@ async def refund_query(query_id: str, buyer_wallet: str) -> Tuple[bool, str]:
         refund_txn = escrow.functions.refund(query_bytes, buyer_checksum, deposit_raw).build_transaction({
             'from': account.address,
             'nonce': w3.eth.get_transaction_count(account.address),
-            'gas': 200000,
-            'gasPrice': w3.to_wei('0.1', 'gwei'),
-            'chainId': 8453
+            'gas': settings.gas_limit,
+            'gasPrice': w3.to_wei(str(settings.gas_price_gwei), 'gwei'),
+            'chainId': settings.base_chain_id
         })
         
         pk = _get_escrow_private_key()

@@ -4,6 +4,9 @@ Embedding pipeline using sentence-transformers
 import numpy as np
 from sentence_transformers import SentenceTransformer
 import asyncio
+from app.config import get_settings
+
+settings = get_settings()
 
 # Load model once at startup
 _model = None
@@ -11,11 +14,15 @@ _model = None
 def get_model():
     global _model
     if _model is None:
-        _model = SentenceTransformer('all-MiniLM-L6-v2')
+        _model = SentenceTransformer(settings.embedding_model)
     return _model
 
-def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> list:
+def chunk_text(text: str, chunk_size: int = None, overlap: int = None) -> list:
     """Split text into overlapping chunks"""
+    if chunk_size is None:
+        chunk_size = settings.chunk_size
+    if overlap is None:
+        overlap = settings.chunk_overlap
     words = text.split()
     chunks = []
     

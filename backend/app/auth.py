@@ -19,7 +19,12 @@ async def get_agent_from_api_key(api_key: str = Header(..., alias="X-API-Key")):
     key_hash = hashlib.sha256(api_key.encode()).hexdigest()
     
     agent = await db.fetchrow(
-        "SELECT id, name, wallet_address, wallet_chain, credit_balance, earnings_balance FROM agents WHERE api_key_hash = $1",
+        """
+        SELECT id, name, wallet_address, wallet_chain, credit_balance, earnings_balance,
+               agent_type, agent_capabilities, agent_version, agent_endpoint,
+               verified_agent, verification_method
+        FROM agents WHERE api_key_hash = $1
+        """,
         key_hash
     )
     
