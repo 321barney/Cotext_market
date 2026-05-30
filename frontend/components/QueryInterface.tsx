@@ -30,10 +30,10 @@ export default function QueryInterface({ listingId: initialListingId = '', price
   const handleQuery = async () => {
     setLoading(true)
     try {
-      const data: QueryResponse = await fetchAPI('/memory/query', {
+      const data = await fetchAPI('/memory/query', {
         method: 'POST',
         body: JSON.stringify({ listing_id: listingId, question }),
-      })
+      }) as QueryResponse
       setResult(data)
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : 'Unknown error'
