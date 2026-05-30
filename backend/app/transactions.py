@@ -655,10 +655,15 @@ async def get_transaction_summary(agent_id: str) -> dict:
         agent_id
     ) or 0
 
-    # Dispute rate: disputes / settlements * 100
-    dispute_count = seller_stats["total_settlements"] or 0
-    total_settled = queries_served
-    dispute_rate = round((dispute_count / max(total_settled, 1)) * 100, 2)
+    # Dispute rate: disputes opened against this seller / total queries settled
+    dispute_count = await db.fetchval(
+        """
+        SELECT COUNT(*) FROM transaction_history
+        WHERE seller_agent_id = $1 AND type = 'dispute_opened' AND status = 'completed'
+        """,
+        agent_id
+    ) or 0
+    dispute_rate = round((dispute_count / max(queries_served, 1)) * 100, 2)
 
     # --- This Month ---
     month_stats = await db.fetchrow(

@@ -25,7 +25,7 @@ from app.payments import settle_query, retry_failed_settlement, refund_query
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
-log_base = os.getenv("LOG_DIR", "/root/.openclaw/workspace/innovations/context-market-v2/logs")
+log_base = os.getenv("LOG_DIR", "/var/log/context-market")
 log_dir = Path(log_base) / "settlements"
 log_dir.mkdir(parents=True, exist_ok=True)
 

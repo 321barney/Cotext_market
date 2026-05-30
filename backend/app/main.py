@@ -1,5 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Request, status, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from decimal import Decimal
@@ -529,25 +531,12 @@ async def query_memory(
     if not buyer_wallet:
         raise HTTPException(status_code=400, detail="Buyer has no wallet configured")
 
-    # Check rate limit
-    allowed, retry_after = await check_rate_limit(buyer_id, listing["id"])
-    if not allowed:
-        raise HTTPException(
-            status_code=429,
-            detail=f"Rate limit exceeded. Retry after {retry_after} seconds."
-        )
-
-    # Check query fingerprint (theft protection) - keyed to wallet
-    question_embedding = await embed_text(req.question)
-    is_duplicate = await check_query_fingerprint(agent.get("wallet_address") or buyer_id, question_embedding)
-    if is_duplicate:
-        raise HTTPException(status_code=429, detail="Similar query already asked recently")
-
-    # Check if this is a follow-up call (buyer sent query_id in header)
+    # Determine which step this is before running step-1-only checks.
     existing_query_id = request.headers.get("X-Query-ID")
 
     if existing_query_id:
-        # === STEP 2: Buyer has deposited, verify and deliver ===
+        # === STEP 2: Buyer has deposited — verify payment and deliver answer ===
+        # Skip rate-limit and fingerprint: those were enforced in step 1.
         query_record = await db.fetchrow(
             "SELECT id, status, cost, release_at FROM queries WHERE id = $1 AND buyer_agent_id = $2",
             _parse_uuid(existing_query_id, "query_id"), buyer_id
@@ -556,13 +545,12 @@ async def query_memory(
         if not query_record:
             raise HTTPException(status_code=404, detail="Query not found")
 
-        if query_record["status"] == "completed":
-            # Already answered, return cached answer
-            return await _get_query_response(query_record["id"])
+        if query_record["status"] in ("pending", "settled", "delivered"):
+            # Already answered — return cached response
+            return await _get_query_response(str(query_record["id"]))
 
         # Verify payment on-chain
         confirmed, msg = await receive_payment(buyer_wallet, query_record["cost"], existing_query_id)
-
         if not confirmed:
             raise HTTPException(status_code=402, detail=f"Payment not confirmed: {msg}")
 
@@ -590,18 +578,32 @@ async def query_memory(
         )
 
         if not updated:
-            # Another request already processing this query
             raise HTTPException(status_code=409, detail="Query already being processed")
 
         payment_verified_at = datetime.utcnow()
+        question_embedding = await embed_text(req.question)
 
-        # Payment verified - proceed with search and synthesis
         return await _process_and_deliver(
             query_record["id"], req.question, listing["id"], seller_id,
             listing["seller_name"], price, question_embedding, buyer_id, payment_verified_at
         )
 
-    # === STEP 1: Create query, return payment instructions ===
+    # === STEP 1: Enforce limits, embed question, return payment instructions ===
+
+    # Rate limit: max queries per buyer per listing per day
+    allowed, retry_after = await check_rate_limit(buyer_id, listing["id"])
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded. Retry after {retry_after} seconds."
+        )
+
+    # Embed question and check for near-duplicate queries (theft protection)
+    question_embedding = await embed_text(req.question)
+    is_duplicate = await check_query_fingerprint(agent.get("wallet_address") or str(buyer_id), question_embedding)
+    if is_duplicate:
+        raise HTTPException(status_code=429, detail="Similar query already asked recently")
+
     question_embedding_str = '[' + ','.join(str(x) for x in question_embedding) + ']'
 
     query_record = await db.fetchrow(
@@ -615,7 +617,6 @@ async def query_memory(
 
     query_id = str(query_record["id"])
 
-    # Return payment instructions
     return MemoryQueryResponse(
         query_id=query_id,
         answer="",
@@ -765,14 +766,17 @@ async def _get_query_response(query_id: str):
 async def get_earnings(agent: dict = Depends(get_agent_from_api_key)):
     """View earnings from query payments."""
     total_queries = await db.fetchval(
-        "SELECT COUNT(*) FROM queries WHERE buyer_agent_id = $1 AND status = 'completed'",
+        """
+        SELECT COUNT(DISTINCT query_id) FROM transaction_history
+        WHERE seller_agent_id = $1 AND type = 'settlement' AND status = 'completed'
+        """,
         agent["id"]
     ) or 0
 
     total_earnings = await db.fetchval(
         """
-        SELECT COALESCE(SUM(amount), 0) FROM transactions
-        WHERE agent_id = $1 AND type = 'query_earn'
+        SELECT COALESCE(SUM(amount_usdc - fee_usdc), 0) FROM transaction_history
+        WHERE seller_agent_id = $1 AND type = 'settlement' AND status = 'completed'
         """,
         agent["id"]
     ) or Decimal("0")

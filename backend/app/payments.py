@@ -9,6 +9,7 @@ Platform never holds USDC directly.
 import os
 import json
 import time
+import logging
 from decimal import Decimal
 from typing import Optional, Tuple
 from datetime import datetime, timedelta
@@ -17,6 +18,7 @@ from app.database import db
 from app.config import get_settings
 
 settings = get_settings()
+logger = logging.getLogger("payments")
 
 # Contract setup
 BASE_RPC = os.getenv("BASE_RPC", "https://mainnet.base.org")
@@ -409,7 +411,7 @@ def _log_settlement(query_id: str, seller: str, amount: Decimal, tx_hash: str):
     from pathlib import Path
     
     # Use relative log dir or fallback to workspace
-    log_base = os.getenv("LOG_DIR", "/root/.openclaw/workspace/innovations/context-market-v2/logs")
+    log_base = os.getenv("LOG_DIR", "/var/log/context-market")
     log_dir = Path(log_base) / "settlements"
     log_dir.mkdir(parents=True, exist_ok=True)
     

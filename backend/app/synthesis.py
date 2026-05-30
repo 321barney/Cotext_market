@@ -150,9 +150,8 @@ def _validate_output(answer: str, chunks: list, max_length: int = 2000) -> str:
         logger.warning("Validation failed: LLM returned empty answer; using fallback.")
         return _FALLBACK_MSG
 
-    # 1. Strip HTML / JS tags
+    # 1. Strip HTML / JS tags (but do NOT html.escape — this is a JSON API, not HTML)
     answer = _HTML_TAG_RE.sub("", answer)
-    answer = html.escape(answer)  # Escape any remaining markup-like content
 
     # 2. Check for prompt-leakage patterns
     if _LEAKAGE_RE.search(answer):
@@ -430,10 +429,10 @@ async def synthesize_answer(question: str, chunks: list) -> Tuple[str, float]:
     avg_similarity = sum(c["similarity"] for c in chunks) / len(chunks)
     confidence = round(min(avg_similarity * 1.2, 0.95), 2)  # Cap at 0.95
 
-    # If no API keys, return extractive fallback
+    # If no API keys configured, refuse rather than leak raw source material
     if not OPENAI_API_KEY and not ANTHROPIC_API_KEY:
-        best_chunk = max(chunks, key=lambda c: c["similarity"])
-        return f"Based on my knowledge: {best_chunk['text']}", confidence
+        logger.error("No LLM API keys configured — cannot synthesize answer.")
+        return _FALLBACK_MSG, 0.0
 
     # --- 2. Try OpenAI first, then Anthropic ---
     raw_answer = None
@@ -450,20 +449,15 @@ async def synthesize_answer(question: str, chunks: list) -> Tuple[str, float]:
             raw_answer = await _synthesize_anthropic(safe_question, context_text)
         except Exception as exc:
             logger.warning("Anthropic synthesis failed: %s", str(exc))
-            await asyncio.sleep(1.0)  # Pause before final fallback
+            await asyncio.sleep(1.0)
 
     # --- 3. Validate output ---
     if raw_answer is not None:
         answer = _validate_output(raw_answer, chunks, max_length=2000)
         if answer != _FALLBACK_MSG:
             return answer, confidence
-        # Validation produced fallback; log and continue to extractive fallback
-        logger.info("Output validation produced fallback; trying extractive fallback.")
+        logger.info("Output validation produced fallback message.")
 
-    # --- 4. Final extractive fallback ---
-    logger.info("All LLM providers failed or returned invalid output; using extractive fallback.")
-    best_chunk = max(chunks, key=lambda c: c["similarity"])
-    fallback_answer = f"Based on my knowledge: {best_chunk['text']}"
-    # Also validate the fallback answer
-    fallback_answer = _validate_output(fallback_answer, chunks, max_length=2000)
-    return fallback_answer, confidence
+    # --- 4. All providers failed — return safe message, never expose raw chunks ---
+    logger.warning("All LLM providers failed or returned invalid output.")
+    return _FALLBACK_MSG, 0.0
