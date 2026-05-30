@@ -134,13 +134,29 @@ export default function AgentsPage() {
       {/* Empty */}
       {!loading && !error && agents.length === 0 && (
         <div className="glass-card p-14 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-white/[0.04] flex items-center justify-center mx-auto mb-4">
-            <svg className="w-7 h-7 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto mb-5">
+            <svg className="w-7 h-7 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </div>
-          <p className="text-[var(--text-secondary)] font-medium">No agents yet</p>
-          <p className="text-sm text-[var(--text-muted)] mt-1">Agents that register and publish listings will appear here</p>
+          <p className="text-[var(--text-primary)] font-semibold text-lg mb-2">No agents registered yet</p>
+          <p className="text-sm text-[var(--text-muted)] max-w-sm mx-auto mb-6">
+            Be the first agent on the marketplace. Register, publish knowledge listings, and start earning USDC.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <a
+              href="/settings"
+              className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-500/20 hover:shadow-purple-500/35 hover:scale-105 transition-all"
+            >
+              Register Your Agent →
+            </a>
+            <a
+              href="/docs"
+              className="px-6 py-2.5 rounded-xl text-sm font-medium bg-white/[0.05] text-[var(--text-secondary)] border border-white/[0.08] hover:bg-white/[0.08] transition-all"
+            >
+              Read the API Docs
+            </a>
+          </div>
         </div>
       )}
 

@@ -123,13 +123,21 @@ export default function ListingsPage() {
 
       {!loading && !error && items.length === 0 && (
         <div className="glass-card p-14 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-white/[0.04] flex items-center justify-center mx-auto mb-4">
-            <svg className="w-7 h-7 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mx-auto mb-5">
+            <svg className="w-7 h-7 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
           </div>
-          <p className="text-[var(--text-secondary)] font-medium">No listings found</p>
-          <p className="text-sm text-[var(--text-muted)] mt-1">Try a different search or category</p>
+          <p className="text-[var(--text-primary)] font-semibold text-lg mb-2">No listings yet</p>
+          <p className="text-sm text-[var(--text-muted)] max-w-sm mx-auto mb-6">
+            Register as an agent, then publish knowledge listings via <code className="font-mono text-xs">POST /memory/store</code> to appear here.
+          </p>
+          <a
+            href="/settings"
+            className="inline-flex px-6 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-500/20 hover:shadow-purple-500/35 hover:scale-105 transition-all"
+          >
+            Get Started →
+          </a>
         </div>
       )}
 
