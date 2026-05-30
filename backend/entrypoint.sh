@@ -1,17 +1,15 @@
 #!/bin/sh
 set -e
 
-echo "=== Running database migrations ==="
-for migration in \
-    migrations/001_init.sql \
-    migrations/002_agent_verification.sql \
-    migrations/003_buyer_reputation.sql \
-    migrations/004_transactions.sql
-do
-    echo "Applying $migration..."
-    psql "$DATABASE_URL" -f "$migration"
-    echo "Done: $migration"
-done
+echo "=== Context Market — startup ==="
 
-echo "=== Migrations complete. Starting server ==="
+if [ -z "$DATABASE_URL" ]; then
+  echo "ERROR: DATABASE_URL is not set. Add it in Railway → backend service → Variables."
+  exit 1
+fi
+
+echo "Running migrations..."
+python migrate.py
+
+echo "Starting API server..."
 exec uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}"
