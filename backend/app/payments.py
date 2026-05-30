@@ -94,7 +94,7 @@ ESCROW_ABI = [
         "type": "event"
     },
     {
-        "inputs": [{"name": "queryId", "type": "bytes32"}, {"name": "seller", "type": "address"}],
+        "inputs": [{"name": "queryId", "type": "bytes32"}, {"name": "seller", "type": "address"}, {"name": "feeBps", "type": "uint256"}],
         "name": "settle",
         "outputs": [],
         "stateMutability": "nonpayable",
@@ -207,7 +207,8 @@ async def receive_payment(
 async def settle_query(
     query_id: str,
     seller_wallet: str,
-    amount_usdc: Decimal
+    amount_usdc: Decimal,
+    fee_bps: int = None
 ) -> Tuple[bool, Optional[str]]:
     """
     Call escrow contract settle() function.
@@ -236,10 +237,13 @@ async def settle_query(
         if deposit_raw == 0:
             return False, "No deposit found"
         
-        # Build settle transaction
+        # Build settle transaction — use tiered fee if provided
         seller_checksum = w3.to_checksum_address(seller_wallet)
-        
-        settle_txn = escrow.functions.settle(query_bytes, seller_checksum).build_transaction({
+        actual_fee_bps = fee_bps if fee_bps is not None else settings.platform_fee_bps
+
+        settle_txn = escrow.functions.settle(
+            query_bytes, seller_checksum, actual_fee_bps
+        ).build_transaction({
             'from': account.address,
             'nonce': w3.eth.get_transaction_count(account.address),
             'gas': settings.gas_limit,

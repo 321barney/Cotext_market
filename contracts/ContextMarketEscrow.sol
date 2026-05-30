@@ -110,8 +110,7 @@ contract ContextMarketEscrow {
      * The backend passes a tiered fee (e.g. 700 for a 7% platinum seller).
      * The contract enforces that feeBps never exceeds platformFeeBps (the cap).
      */
-    function settle(bytes32 queryId, address seller, uint256 feeBps) external whenNotPaused {
-        require(msg.sender == platform, "Only platform");
+    function _doSettle(bytes32 queryId, address seller, uint256 feeBps) internal {
         require(!settled[queryId], "Already settled");
         require(deposits[queryId] > 0, "No deposit");
         require(feeBps <= platformFeeBps, "Fee exceeds max");
@@ -132,11 +131,19 @@ contract ContextMarketEscrow {
     }
 
     /**
-     * @notice Backward-compatible settle using the full platformFeeBps as the fee.
-     *         Kept for ABI compatibility with existing integrations.
+     * @notice Settle with a tiered fee (e.g. 700 bps for Platinum sellers).
+     */
+    function settle(bytes32 queryId, address seller, uint256 feeBps) external whenNotPaused {
+        require(msg.sender == platform, "Only platform");
+        _doSettle(queryId, seller, feeBps);
+    }
+
+    /**
+     * @notice Settle using the default platformFeeBps.
      */
     function settle(bytes32 queryId, address seller) external whenNotPaused {
-        this.settle(queryId, seller, platformFeeBps);
+        require(msg.sender == platform, "Only platform");
+        _doSettle(queryId, seller, platformFeeBps);
     }
 
     // ─── Refund ───
