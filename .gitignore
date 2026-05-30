@@ -75,3 +75,4 @@ deployed_test.json
 
 # ── Docker ──────────────────────────────────
 *.env.docker
+CLAUDE.md
