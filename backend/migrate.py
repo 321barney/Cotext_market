@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 """
 Run database migrations using asyncpg.
-Uses the same connection as the app — handles SSL automatically.
-Each statement is run individually so partial failures are reported
-without stopping the whole migration.
+Executes each SQL file as a single string — handles PL/pgSQL $$ blocks correctly.
 """
 import asyncio
 import asyncpg
 import os
-import re
 import sys
 from pathlib import Path
 
@@ -22,26 +19,16 @@ MIGRATIONS = [
 ]
 
 
-def split_statements(sql: str) -> list[str]:
-    """Split SQL file into individual statements, skipping blanks."""
-    statements = []
-    for stmt in sql.split(";"):
-        stmt = stmt.strip()
-        if stmt and not stmt.startswith("--"):
-            statements.append(stmt + ";")
-    return statements
-
-
 async def run():
     if not DATABASE_URL:
-        print("ERROR: DATABASE_URL environment variable is not set.")
+        print("ERROR: DATABASE_URL is not set.")
         sys.exit(1)
 
-    print(f"Connecting to database...")
+    print("Connecting to database...")
     try:
         conn = await asyncpg.connect(DATABASE_URL)
     except Exception as e:
-        print(f"ERROR: Could not connect to database: {e}")
+        print(f"ERROR: Could not connect: {e}")
         sys.exit(1)
 
     print("Connected.\n")
@@ -50,32 +37,21 @@ async def run():
         for migration_file in MIGRATIONS:
             path = Path(migration_file)
             if not path.exists():
-                print(f"SKIP  {migration_file} (file not found)")
+                print(f"SKIP  {migration_file} (not found)")
                 continue
 
-            print(f"--- {migration_file} ---")
             sql = path.read_text()
-            statements = split_statements(sql)
-            ok = 0
-            skipped = 0
-
-            for stmt in statements:
-                try:
-                    await conn.execute(stmt)
-                    ok += 1
-                except asyncpg.DuplicateTableError:
-                    skipped += 1
-                except asyncpg.DuplicateObjectError:
-                    skipped += 1
-                except asyncpg.UniqueViolationError:
-                    skipped += 1
-                except Exception as e:
-                    # Log but continue — don't block startup
-                    short = str(e).split("\n")[0]
-                    print(f"  WARN: {short}")
-                    skipped += 1
-
-            print(f"  OK: {ok} statements, {skipped} skipped (already exist)\n")
+            print(f"Applying {migration_file}...")
+            try:
+                await conn.execute(sql)
+                print(f"  OK\n")
+            except asyncpg.DuplicateTableError:
+                print(f"  Already applied (tables exist)\n")
+            except asyncpg.DuplicateObjectError:
+                print(f"  Already applied (objects exist)\n")
+            except Exception as e:
+                # Log but keep going — partial migrations are better than none
+                print(f"  WARN: {str(e)[:200]}\n")
 
     finally:
         await conn.close()
