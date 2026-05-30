@@ -163,24 +163,22 @@ def _determine_verification(agent_type: str) -> tuple:
 # Startup / Shutdown
 # ======================
 
-async def _connect_db_background():
-    try:
-        await db.connect()
-    except Exception as e:
-        logger.error(f"Database connection failed: {e}. Service running in degraded mode.")
-
-
 @app.on_event("startup")
 async def startup():
-    # Connect in the background so uvicorn starts accepting requests immediately.
-    # /health returns "degraded" until the pool is ready.
-    asyncio.create_task(_connect_db_background())
+    # Connect synchronously — requests must not arrive before the pool is ready.
+    # The pool uses min_size=2 so this is fast and doesn't hammer the DB.
+    try:
+        await db.connect()
+        logger.info("Database pool ready.")
+    except Exception as e:
+        # Log but don't crash — _require_pool() returns 503 until reconnected.
+        logger.error(f"Database connection failed at startup: {e}")
 
     if settings.debug:
-        logger.warning("DEBUG=true -- Stack traces will expose sensitive data. Disable in production.")
+        logger.warning("DEBUG=true — disable in production.")
 
     if REQUIRE_AGENT_VERIFICATION:
-        logger.info("Agent verification is ENABLED. Unverified agents may be blocked from storing memories.")
+        logger.info("Agent verification is ENABLED.")
 
 @app.on_event("shutdown")
 async def shutdown():
