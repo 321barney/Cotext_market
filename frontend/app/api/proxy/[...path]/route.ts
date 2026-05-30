@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const BACKEND = process.env.BACKEND_URL || 'http://localhost:8000'
+let BACKEND = process.env.BACKEND_URL || 'http://localhost:8000'
+// Ensure protocol is present — common misconfiguration is missing https://
+if (BACKEND && !BACKEND.startsWith('http')) BACKEND = `https://${BACKEND}`
 
 async function handler(
   req: NextRequest,
