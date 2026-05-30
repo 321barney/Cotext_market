@@ -1,97 +1,151 @@
-/* Listings page: browse knowledge listings with dark theme */
 'use client'
 
 import { useEffect, useState } from 'react'
-import { fetchAPI } from '@/lib/api'
-import type { Listing } from '@/lib/types'
 import ListingCard from '@/components/ui/ListingCard'
 
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
+interface DiscoverItem {
+  listing_id: string
+  title: string
+  description?: string
+  category?: string
+  price_per_query: string
+  total_queries: number
+  created_at: string
+  agent_id: string
+  agent_name: string
+  agent_type: string
+  agent_capabilities: string[]
+  verified_agent: boolean
+  reputation_score?: number
+  tier?: string
+}
+
+const CATEGORIES = ['All', 'trading', 'legal', 'coding', 'research', 'medical', 'data-analysis', 'education', 'customer-support']
+
 export default function ListingsPage() {
-  const [listings, setListings] = useState<Listing[]>([])
+  const [items, setItems] = useState<DiscoverItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string>('')
+  const [error, setError] = useState('')
+  const [search, setSearch] = useState('')
+  const [category, setCategory] = useState('All')
+  const [sort, setSort] = useState('reputation')
+  const [total, setTotal] = useState(0)
 
   useEffect(() => {
-    fetchAPI('/memory/list')
-      .then((data: Listing[]) => {
-        setListings(data)
+    const params = new URLSearchParams({ limit: '50', sort })
+    if (category !== 'All') params.set('category', category)
+    if (search.trim()) params.set('q', search.trim())
+
+    setLoading(true)
+    fetch(`${API}/agents/discover?${params}`)
+      .then(r => r.json())
+      .then(data => {
+        setItems(data.agents ?? [])
+        setTotal(data.total ?? 0)
         setLoading(false)
       })
-      .catch((e: Error) => {
+      .catch(e => {
         setError(e.message)
         setLoading(false)
       })
-  }, [])
-
-  if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 w-48 bg-white/5 rounded" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="glass-card h-64" />
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="glass-card p-8 text-center">
-          <svg className="w-12 h-12 text-[var(--accent-red)] mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <p className="font-semibold text-[var(--text-primary)]">Failed to load listings</p>
-          <p className="text-sm text-[var(--text-muted)] mt-1">{error}</p>
-        </div>
-      </div>
-    )
-  }
+  }, [search, category, sort])
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">
-            Knowledge Listings
-          </h2>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">
-            Browse agent-provided knowledge available for query
-          </p>
-        </div>
-        <span className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white/[0.04] text-[var(--text-muted)] border border-white/[0.06]">
-          {listings.length} listing{listings.length !== 1 ? 's' : ''}
+      <div className="mb-8">
+        <h2 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">Knowledge Listings</h2>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">Agent-provided knowledge available for query — pay per use via USDC escrow</p>
+      </div>
+
+      {/* Controls */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <input
+          type="text"
+          placeholder="Search listings..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="flex-1 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-purple-500/40"
+        />
+        <select
+          value={sort}
+          onChange={e => setSort(e.target.value)}
+          className="px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-[var(--text-secondary)] focus:outline-none focus:border-purple-500/40"
+        >
+          <option value="reputation">Top Rated</option>
+          <option value="queries">Most Queried</option>
+          <option value="newest">Newest</option>
+          <option value="price_asc">Price: Low → High</option>
+          <option value="price_desc">Price: High → Low</option>
+        </select>
+      </div>
+
+      {/* Category pills */}
+      <div className="flex flex-wrap gap-2 mb-8">
+        {CATEGORIES.map(c => (
+          <button
+            key={c}
+            onClick={() => setCategory(c)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all ${
+              category === c
+                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                : 'bg-white/[0.04] text-[var(--text-muted)] border border-white/[0.06] hover:border-purple-500/20 hover:text-[var(--text-secondary)]'
+            }`}
+          >
+            {c}
+          </button>
+        ))}
+        <span className="ml-auto px-3 py-1.5 rounded-full text-xs text-[var(--text-muted)] bg-white/[0.02] border border-white/[0.05]">
+          {total} listing{total !== 1 ? 's' : ''}
         </span>
       </div>
 
-      {listings.length === 0 ? (
-        <div className="glass-card p-12 text-center">
-          <svg className="w-12 h-12 text-[var(--text-muted)] mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-          </svg>
-          <p className="text-[var(--text-muted)]">No active listings found.</p>
-        </div>
-      ) : (
+      {/* States */}
+      {loading && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {listings.map((listing) => (
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="glass-card h-64 animate-pulse" />
+          ))}
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="glass-card p-10 text-center">
+          <p className="font-semibold text-[var(--text-primary)]">Could not load listings</p>
+          <p className="text-sm text-[var(--text-muted)] mt-1">{error}</p>
+        </div>
+      )}
+
+      {!loading && !error && items.length === 0 && (
+        <div className="glass-card p-14 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-white/[0.04] flex items-center justify-center mx-auto mb-4">
+            <svg className="w-7 h-7 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+          </div>
+          <p className="text-[var(--text-secondary)] font-medium">No listings found</p>
+          <p className="text-sm text-[var(--text-muted)] mt-1">Try a different search or category</p>
+        </div>
+      )}
+
+      {!loading && !error && items.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {items.map(item => (
             <ListingCard
-              key={listing.id}
-              id={listing.id}
-              title={listing.title}
-              description={listing.description}
-              category={listing.category}
-              price_per_query={listing.price_per_query}
-              total_queries={listing.total_queries}
-              reputation_score={listing.reputation_score ? parseFloat(listing.reputation_score) : undefined}
-              agent_name={listing.agent_name}
-              agent_type="provider"
-              verified_agent={true}
-              created_at={listing.created_at}
+              key={item.listing_id}
+              id={item.listing_id}
+              title={item.title}
+              description={item.description}
+              category={item.category}
+              price_per_query={item.price_per_query}
+              total_queries={item.total_queries}
+              reputation_score={item.reputation_score}
+              agent_name={item.agent_name}
+              agent_type={item.agent_type}
+              verified_agent={item.verified_agent}
+              created_at={item.created_at}
             />
           ))}
         </div>
