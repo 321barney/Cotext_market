@@ -399,42 +399,43 @@ async def _synthesize_anthropic(question: str, context_text: str) -> str:
 # ===========================================================================
 # 7. Public entry point
 # ===========================================================================
+def _extractive_answer(chunks: list) -> str:
+    """
+    Build an answer directly from the top retrieved chunks.
+    Used when no LLM is configured — the buyer agent can process this itself.
+    """
+    parts = []
+    for i, chunk in enumerate(chunks):
+        parts.append(f"[{i+1}] {chunk['text']}")
+    return "\n\n".join(parts)
+
+
 async def synthesize_answer(question: str, chunks: list) -> Tuple[str, float]:
     """
-    Synthesize a single answer from retrieved chunks.
-    Returns: (answer_text, confidence_score)
-
-    Security pipeline:
-    1. Sanitize user question (prompt-injection prevention).
-    2. Call LLM provider (OpenAI -> Anthropic) with retry + timeout.
-    3. Validate LLM output (strip tags, length cap, leakage check).
-    4. Fallback to extractive answer if all LLM calls fail.
+    Return an answer from retrieved chunks.
+    - If an LLM key is configured: synthesize a prose answer (better UX).
+    - If no LLM key: return the top chunks directly (buyer agents can process these).
+    LLM keys are entirely optional — the core retrieval workflow runs without them.
     """
     if not chunks:
-        return "I don't have specific knowledge about that in my context.", 0.0
+        return "No relevant knowledge found for this query.", 0.0
 
-    # --- 1. Sanitize user question ---
-    safe_question = _sanitize_input(question)
-    if not safe_question:
-        safe_question = "(empty question)"
-        logger.warning("User question was empty after sanitization.")
+    avg_similarity = sum(c["similarity"] for c in chunks) / len(chunks)
+    confidence = round(min(avg_similarity * 1.2, 0.95), 2)
 
-    # Build context from chunks
+    # No LLM configured — return chunks directly, buyer agent processes them
+    if not OPENAI_API_KEY and not ANTHROPIC_API_KEY:
+        logger.info("No LLM keys configured — returning extractive answer.")
+        return _extractive_answer(chunks), confidence
+
+    # --- LLM synthesis path ---
+    safe_question = _sanitize_input(question) or "(empty question)"
+
     context_text = "\n\n".join([
         f"[Source {i+1}] {chunk['text']}"
         for i, chunk in enumerate(chunks)
     ])
 
-    # Calculate confidence from similarity scores
-    avg_similarity = sum(c["similarity"] for c in chunks) / len(chunks)
-    confidence = round(min(avg_similarity * 1.2, 0.95), 2)  # Cap at 0.95
-
-    # If no API keys configured, refuse rather than leak raw source material
-    if not OPENAI_API_KEY and not ANTHROPIC_API_KEY:
-        logger.error("No LLM API keys configured — cannot synthesize answer.")
-        return _FALLBACK_MSG, 0.0
-
-    # --- 2. Try OpenAI first, then Anthropic ---
     raw_answer = None
 
     if _openai_client:
@@ -442,7 +443,7 @@ async def synthesize_answer(question: str, chunks: list) -> Tuple[str, float]:
             raw_answer = await _synthesize_openai(safe_question, context_text)
         except Exception as exc:
             logger.warning("OpenAI synthesis failed: %s", str(exc))
-            await asyncio.sleep(1.0)  # Pause before fallback
+            await asyncio.sleep(1.0)
 
     if raw_answer is None and ANTHROPIC_API_KEY:
         try:
@@ -451,13 +452,12 @@ async def synthesize_answer(question: str, chunks: list) -> Tuple[str, float]:
             logger.warning("Anthropic synthesis failed: %s", str(exc))
             await asyncio.sleep(1.0)
 
-    # --- 3. Validate output ---
     if raw_answer is not None:
         answer = _validate_output(raw_answer, chunks, max_length=2000)
         if answer != _FALLBACK_MSG:
             return answer, confidence
-        logger.info("Output validation produced fallback message.")
+        logger.info("LLM output failed validation — falling back to extractive answer.")
 
-    # --- 4. All providers failed — return safe message, never expose raw chunks ---
-    logger.warning("All LLM providers failed or returned invalid output.")
-    return _FALLBACK_MSG, 0.0
+    # LLM failed — fall back to chunks rather than returning nothing
+    logger.warning("All LLM providers failed — returning extractive answer.")
+    return _extractive_answer(chunks), confidence
