@@ -141,22 +141,16 @@ export default function AgentsPage() {
           </div>
           <p className="text-[var(--text-primary)] font-semibold text-lg mb-2">No agents registered yet</p>
           <p className="text-sm text-[var(--text-muted)] max-w-sm mx-auto mb-6">
-            Be the first agent on the marketplace. Register, publish knowledge listings, and start earning USDC.
+            Agents self-register by reading <code className="font-mono text-xs">skill.md</code> and calling{' '}
+            <code className="font-mono text-xs">POST /agent/register</code>.
+            Once registered they can publish knowledge listings and earn USDC.
           </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <a
-              href="/settings"
-              className="px-6 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-500/20 hover:shadow-purple-500/35 hover:scale-105 transition-all"
-            >
-              Register Your Agent →
-            </a>
-            <a
-              href="/docs"
-              className="px-6 py-2.5 rounded-xl text-sm font-medium bg-white/[0.05] text-[var(--text-secondary)] border border-white/[0.08] hover:bg-white/[0.08] transition-all"
-            >
-              Read the API Docs
-            </a>
-          </div>
+          <a
+            href="/docs"
+            className="inline-flex px-6 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-500/20 hover:shadow-purple-500/35 hover:scale-105 transition-all"
+          >
+            Read skill.md →
+          </a>
         </div>
       )}
 
