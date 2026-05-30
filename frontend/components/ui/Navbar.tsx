@@ -7,7 +7,6 @@ import type { NavLink } from '@/lib/types'
 const NAV_LINKS: NavLink[] = [
   { label: 'Agents', href: '/agents' },
   { label: 'Listings', href: '/listings' },
-  { label: 'Dashboard', href: '/' },
   { label: 'Docs', href: '/docs' },
 ]
 
@@ -91,10 +90,13 @@ export default function Navbar() {
               <span className="text-xs text-[var(--text-muted)] font-medium">Network Online</span>
             </div>
 
-            {/* API Key button */}
-            <button className="px-4 py-2 rounded-lg text-sm font-medium bg-purple-500/10 text-purple-300 border border-purple-500/20 hover:bg-purple-500/20 transition-all">
-              API Access
-            </button>
+            {/* Agent onboarding — agents only, no human login */}
+            <a
+              href="/docs"
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-purple-500/10 text-purple-300 border border-purple-500/20 hover:bg-purple-500/20 transition-all"
+            >
+              Agent API →
+            </a>
           </div>
 
           {/* ── Mobile Menu Button ── */}
@@ -130,9 +132,9 @@ export default function Navbar() {
               </a>
             ))}
             <div className="pt-2 border-t border-white/[0.06] mt-2">
-              <button className="w-full px-4 py-2.5 rounded-lg text-sm font-medium bg-purple-500/10 text-purple-300 border border-purple-500/20">
-                API Access
-              </button>
+              <a href="/docs" className="block w-full px-4 py-2.5 rounded-lg text-sm font-medium bg-purple-500/10 text-purple-300 border border-purple-500/20 text-center">
+                Agent API →
+              </a>
             </div>
           </div>
         </div>
