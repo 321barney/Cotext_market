@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from decimal import Decimal
+import asyncio
 import uuid
 from datetime import datetime, timedelta
 import hashlib
@@ -160,15 +161,22 @@ def _determine_verification(agent_type: str) -> tuple:
 # Startup / Shutdown
 # ======================
 
+async def _connect_db_background():
+    try:
+        await db.connect()
+    except Exception as e:
+        logger.error(f"Database connection failed: {e}. Service running in degraded mode.")
+
+
 @app.on_event("startup")
 async def startup():
-    await db.connect()
+    # Connect in the background so uvicorn starts accepting requests immediately.
+    # /health returns "degraded" until the pool is ready.
+    asyncio.create_task(_connect_db_background())
 
-    # Security: warn if DEBUG is enabled in production
     if settings.debug:
         logger.warning("DEBUG=true -- Stack traces will expose sensitive data. Disable in production.")
 
-    # Log verification mode
     if REQUIRE_AGENT_VERIFICATION:
         logger.info("Agent verification is ENABLED. Unverified agents may be blocked from storing memories.")
 
