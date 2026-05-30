@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import AgentCard from '@/components/ui/AgentCard'
 import type { AgentCardProps } from '@/lib/types'
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API = '/api/proxy'
 
 interface DiscoverItem {
   listing_id: string

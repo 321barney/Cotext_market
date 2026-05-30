@@ -5,7 +5,7 @@ import { fetchAPI } from '@/lib/api'
 import type { Earnings, Reputation } from '@/lib/types'
 import Link from 'next/link'
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API = '/api/proxy'
 
 interface MarketStats {
   total: number

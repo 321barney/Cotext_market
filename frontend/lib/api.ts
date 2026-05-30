@@ -1,14 +1,17 @@
 /**
- * Frontend API client for backend communication
- * Supports escrow payment flow
+ * Frontend API client — all requests go through /api/proxy/* (same origin).
+ * The actual backend URL is set server-side as BACKEND_URL in Railway.
+ * No build-time env vars required.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const BASE = '/api/proxy'
 
 export async function fetchAPI(path: string, options: RequestInit = {}): Promise<unknown> {
-  const apiKey = localStorage.getItem('acp_api_key') || ''
+  const apiKey = typeof window !== 'undefined'
+    ? localStorage.getItem('acp_api_key') || ''
+    : ''
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${BASE}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -18,8 +21,8 @@ export async function fetchAPI(path: string, options: RequestInit = {}): Promise
   })
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: 'Unknown error' })) as { error?: string }
-    throw new Error(error.error || `HTTP ${res.status}`)
+    const error = await res.json().catch(() => ({ detail: 'Unknown error' })) as { detail?: string }
+    throw new Error(error.detail || `HTTP ${res.status}`)
   }
 
   return res.json()
@@ -31,52 +34,35 @@ export interface EscrowPaymentResult {
   body: Record<string, unknown>
 }
 
-/**
- * Execute escrow payment flow:
- * 1. Query without payment → expect escrow instructions
- * 2. Buyer deposits USDC to escrow
- * 3. Retry with query_id
- */
 export async function escrowQuery(
   path: string,
   body: Record<string, unknown>,
   paymentSignature?: string,
 ): Promise<EscrowPaymentResult> {
-  const apiKey = localStorage.getItem('acp_api_key') || ''
+  const apiKey = typeof window !== 'undefined'
+    ? localStorage.getItem('acp_api_key') || ''
+    : ''
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'X-API-Key': apiKey,
   }
+  if (paymentSignature) headers['PAYMENT-SIGNATURE'] = paymentSignature
 
-  if (paymentSignature) {
-    headers['PAYMENT-SIGNATURE'] = paymentSignature
-  }
-
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
   })
 
   if (res.status === 402) {
-    // Return payment requirements for signing
-    const paymentRequired = res.headers.get('PAYMENT-REQUIRED')
-    return {
-      status: 402,
-      paymentRequired: paymentRequired,
-      body: await res.json() as Record<string, unknown>,
-    }
+    return { status: 402, paymentRequired: res.headers.get('PAYMENT-REQUIRED'), body: await res.json() }
   }
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ error: 'Unknown error' })) as { error?: string }
-    throw new Error(error.error || `HTTP ${res.status}`)
+    const error = await res.json().catch(() => ({ detail: 'Unknown error' })) as { detail?: string }
+    throw new Error(error.detail || `HTTP ${res.status}`)
   }
 
-  return {
-    status: 200,
-    paymentRequired: null,
-    body: await res.json() as Record<string, unknown>,
-  }
+  return { status: 200, paymentRequired: null, body: await res.json() }
 }
