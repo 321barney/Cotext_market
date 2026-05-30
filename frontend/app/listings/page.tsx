@@ -40,7 +40,10 @@ export default function ListingsPage() {
 
     setLoading(true)
     fetch(`${API}/agents/discover?${params}`)
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error(`Server error ${r.status}`)
+        return r.json()
+      })
       .then(data => {
         setItems(data.agents ?? [])
         setTotal(data.total ?? 0)

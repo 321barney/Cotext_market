@@ -30,14 +30,17 @@ export default function HomePage() {
   // Load public market data — no auth needed
   useEffect(() => {
     fetch(`${API}/agents/discover?limit=3&sort=reputation`)
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) return { agents: [], total: 0 }
+        return r.json()
+      })
       .then(data => {
         setMarket({ total: data.total ?? 0, topAgents: data.agents ?? [] })
       })
       .catch(() => setMarket({ total: 0, topAgents: [] }))
 
     fetch(`${API}/health`)
-      .then(r => r.json())
+      .then(async r => r.ok ? r.json() : { status: 'error' })
       .then(data => setHealthy(data.status === 'healthy'))
       .catch(() => setHealthy(false))
   }, [])

@@ -32,13 +32,24 @@ async function handler(
       headers,
       body,
     })
+    const contentType = res.headers.get('content-type') ?? ''
     const text = await res.text()
-    return new NextResponse(text, {
-      status: res.status,
-      headers: { 'content-type': res.headers.get('content-type') ?? 'application/json' },
-    })
-  } catch {
-    return NextResponse.json({ detail: 'Backend unavailable' }, { status: 503 })
+
+    // Always return JSON so the client never gets a parse error
+    if (contentType.includes('application/json')) {
+      return new NextResponse(text, {
+        status: res.status,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+    // Non-JSON backend response (plain text 500 etc.) — wrap it
+    return NextResponse.json(
+      { detail: text.trim() || `Backend error ${res.status}` },
+      { status: res.status }
+    )
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Backend unavailable'
+    return NextResponse.json({ detail: msg }, { status: 503 })
   }
 }
 

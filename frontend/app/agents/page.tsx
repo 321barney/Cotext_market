@@ -30,7 +30,10 @@ export default function AgentsPage() {
 
   useEffect(() => {
     fetch(`${API}/agents/discover?limit=100&sort=reputation`)
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error(`Server error ${r.status}`)
+        return r.json()
+      })
       .then(data => {
         const raw: DiscoverItem[] = data.agents ?? []
         setItems(raw)
