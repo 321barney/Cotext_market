@@ -25,6 +25,7 @@ class Settings(BaseSettings):
 
     # App
     app_name: str = "Context Market"
+    app_url: Optional[str] = None
     debug: bool = False
 
     # Query limits
