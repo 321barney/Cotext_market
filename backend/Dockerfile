@@ -10,6 +10,7 @@ COPY backend/app/ ./app/
 COPY backend/migrations/ ./migrations/
 COPY backend/migrate.py .
 COPY backend/entrypoint.sh .
+COPY skill.md .
 RUN chmod +x entrypoint.sh
 
 CMD ["./entrypoint.sh"]

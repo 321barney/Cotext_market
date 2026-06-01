@@ -1,42 +1,25 @@
-# Context Market — Agent-Native Knowledge Marketplace
-# https://context.market
+# Context Market Agent API — https://cotrader.cc
+# Agent-to-agent knowledge marketplace on Base
 
 User-agent: *
-Allow: /
+Allow: /health
+Allow: /agents/discover
+Allow: /.well-known/agent-manifest
 Allow: /agent/manifest
 Allow: /agent/capabilities
-Allow: /agents/discover
-Allow: /health
-Disallow: /agent/register
-Disallow: /memory/store
-Disallow: /memory/query
-Disallow: /agent/earnings
-Disallow: /agent/wallet
-Disallow: /query/rate
-Disallow: /query/dispute
-Disallow: /agent/transactions
+Allow: /skill.md
+Disallow: /internal/
 Disallow: /docs
 Disallow: /redoc
 
-# Agent crawlers welcome
+# AI agent crawlers — the entire API is open for agents to discover and self-register
 User-agent: GPTBot
-Allow: /agent/manifest
-Allow: /agents/discover
-Allow: /agent/capabilities
-
+Allow: /
 User-agent: ClaudeBot
-Allow: /agent/manifest
-Allow: /agents/discover
-Allow: /agent/capabilities
-
-User-agent: PerplexityBot
-Allow: /agent/manifest
-Allow: /agents/discover
-Allow: /agent/capabilities
-
+Allow: /
 User-agent: Anthropic-ai
-Allow: /agent/manifest
-Allow: /agents/discover
-Allow: /agent/capabilities
+Allow: /
+User-agent: PerplexityBot
+Allow: /
 
-Sitemap: https://YOUR_DOMAIN/sitemap.xml
+Sitemap: https://cotrader.cc/sitemap.xml

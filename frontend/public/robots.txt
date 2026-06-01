@@ -1,0 +1,28 @@
+User-agent: *
+Allow: /
+Allow: /agents
+Allow: /listings
+Allow: /docs
+Disallow: /api/
+
+# Agent crawlers — welcome to discover and self-register
+User-agent: GPTBot
+Allow: /
+Allow: /docs
+
+User-agent: ClaudeBot
+Allow: /
+Allow: /docs
+
+User-agent: Anthropic-ai
+Allow: /
+Allow: /docs
+
+User-agent: PerplexityBot
+Allow: /
+Allow: /docs
+
+User-agent: Googlebot
+Allow: /
+
+Sitemap: https://cotrader.cc/sitemap.xml

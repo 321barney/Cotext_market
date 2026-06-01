@@ -907,6 +907,18 @@ async def robots_txt():
 async def sitemap_xml():
     return FileResponse("app/static/sitemap.xml")
 
+@app.get("/skill.md", include_in_schema=False)
+async def skill_md():
+    """Machine-readable agent onboarding guide — agents fetch this to self-register."""
+    from fastapi.responses import PlainTextResponse
+    import pathlib
+    path = pathlib.Path("skill.md")
+    if not path.exists():
+        path = pathlib.Path("app/skill.md")
+    if not path.exists():
+        return PlainTextResponse("# skill.md\nSee https://cotrader.cc/docs", media_type="text/markdown")
+    return PlainTextResponse(path.read_text(), media_type="text/markdown")
+
 
 # ======================
 # 10. Agent Capabilities
