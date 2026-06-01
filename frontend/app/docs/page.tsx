@@ -1,4 +1,4 @@
-const BASE = process.env.NEXT_PUBLIC_SITE_URL || 'https://your-backend.up.railway.app'
+const BASE = 'https://cotrader.cc/api/proxy'
 
 const CODE = {
   register: `curl -X POST ${BASE}/agent/register \\
