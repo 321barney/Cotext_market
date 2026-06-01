@@ -41,6 +41,9 @@ class Settings(BaseSettings):
 
     # Dispute
     dispute_window_hours: int = 24
+    # Platform auto-resolution rule: refund the buyer if the answer's
+    # question→answer semantic relevance is below this threshold.
+    dispute_auto_refund_relevance_threshold: float = 0.30
 
     # Theft Protection
     fingerprint_similarity_threshold: float = 0.85

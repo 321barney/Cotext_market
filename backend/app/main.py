@@ -1,5 +1,6 @@
-from fastapi import FastAPI, Depends, HTTPException, Request, status, Query
+from fastapi import FastAPI, Depends, HTTPException, Request, status, Query, Header
 from fastapi.middleware.cors import CORSMiddleware
+import hmac
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, field_validator
@@ -48,6 +49,7 @@ from app.transactions import (
     get_transaction_summary,
     open_dispute,
     resolve_dispute as resolve_dispute_tx,
+    auto_resolve_dispute,
     get_dispute_by_query,
     record_payment_transaction,
     record_delivery_transaction,
@@ -1366,33 +1368,46 @@ async def discover_agents(
 # 14. Dispute: Open
 # ======================
 
-@app.post("/query/dispute", response_model=DisputeResponse)
+@app.post("/query/dispute")
 async def create_dispute(
     req: DisputeRequest,
     agent: dict = Depends(get_agent_from_api_key)
 ):
     """
     Open a dispute on a query (must be within dispute window).
-    Halts settlement until resolved.
+
+    The dispute is resolved IMMEDIATELY and AUTOMATICALLY by the platform
+    rule (see transactions.auto_resolve_dispute) — there is no human or
+    agent judge. The verdict is based on objective delivery metrics recorded
+    at answer time: a buyer is refunded only if no real answer was delivered
+    or the answer was not semantically relevant; otherwise funds release to
+    the seller.
     """
     query_uuid = _parse_uuid(req.query_id, "query_id")
 
-    result = await open_dispute(
+    # 1. Open the dispute (only the query's buyer may do this — enforced in open_dispute)
+    opened = await open_dispute(
         query_id=str(query_uuid),
         buyer_agent_id=str(agent["id"]),
         reason=req.reason,
         evidence=req.evidence
     )
 
-    return DisputeResponse(
-        dispute_id=result["dispute_id"],
-        query_id=result["query_id"],
-        status=result["status"],
-        reason=result["reason"],
-        refund_amount=result["refund_amount"],
-        created_at=result["created_at"],
-        resolved_at=result["resolved_at"]
-    )
+    # 2. Resolve it automatically by platform rule
+    verdict = await auto_resolve_dispute(opened["dispute_id"])
+
+    return {
+        "dispute_id": opened["dispute_id"],
+        "query_id": opened["query_id"],
+        "reason": opened["reason"],
+        "resolution": verdict.get("status"),          # resolved_buyer | resolved_seller
+        "rule": verdict.get("auto_rule"),              # why the platform decided this
+        "refund_amount": verdict.get("refund_amount", Decimal("0")),
+        "refund_issued": verdict.get("refund_issued", False),
+        "tx_hash": verdict.get("tx_hash"),
+        "resolved_at": verdict.get("resolved_at"),
+        "message": "Dispute auto-resolved by platform rule.",
+    }
 
 
 # ======================
@@ -1425,14 +1440,20 @@ async def resolve_dispute_endpoint(
     resolution: str,  # 'resolved_buyer', 'resolved_seller', 'canceled'
     refund_amount: Decimal = Decimal("0"),
     notes: Optional[str] = None,
-    agent: dict = Depends(get_agent_from_api_key)
+    x_admin_key: Optional[str] = Header(None, alias="X-Admin-Key"),
 ):
     """
-    Resolve a dispute. Platform admin or seller can resolve.
-    'resolved_buyer' -> refund buyer
-    'resolved_seller' -> release funds to seller
-    'canceled' -> cancel dispute, return to pending settlement
+    EMERGENCY ADMIN OVERRIDE ONLY.
+
+    Disputes are normally resolved automatically by the platform rule when
+    they are opened (see POST /query/dispute). This endpoint exists only for
+    the platform operator to manually correct an edge case, and requires the
+    ADMIN_API_KEY in the X-Admin-Key header. It is NOT callable by agents.
     """
+    expected = os.getenv("ADMIN_API_KEY")
+    if not expected or not x_admin_key or not hmac.compare_digest(x_admin_key, expected):
+        raise HTTPException(status_code=403, detail="Admin authorization required")
+
     if resolution not in ("resolved_buyer", "resolved_seller", "canceled"):
         raise HTTPException(
             status_code=400,
@@ -1443,8 +1464,8 @@ async def resolve_dispute_endpoint(
         dispute_id=dispute_id,
         resolution=resolution,
         refund_amount=refund_amount,
-        resolver_id=str(agent["id"]),
-        notes=notes
+        resolver_id=None,  # admin / system
+        notes=notes or "Manual admin override"
     )
 
     return result

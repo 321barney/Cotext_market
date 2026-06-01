@@ -584,6 +584,79 @@ async def resolve_dispute(
 
 
 # ============================================
+# Dispute: Automated Platform-Rule Resolution
+# ============================================
+
+# Markers that indicate the seller never delivered a real answer.
+# Kept in sync with the fallback strings in synthesis.py.
+_NO_ANSWER_MARKERS = (
+    "i couldn't generate a reliable answer",
+    "i don't have specific knowledge",
+    "no relevant knowledge found",
+)
+
+
+async def auto_resolve_dispute(dispute_id: str) -> dict:
+    """
+    Resolve a dispute using a deterministic platform rule — no human or
+    agent acts as judge. The verdict is based only on objective delivery
+    metrics recorded at answer time (which cannot be changed after the fact):
+
+      1. No real answer delivered (empty or a known fallback message) -> refund buyer
+      2. Question->Answer semantic relevance below threshold          -> refund buyer
+      3. Otherwise (a relevant answer was delivered)                  -> release to seller
+
+    This is the ONLY path that decides a dispute. Neither buyer nor seller
+    can choose the outcome.
+    """
+    from app.config import get_settings
+    settings = get_settings()
+    threshold = settings.dispute_auto_refund_relevance_threshold
+
+    dispute = await db.fetchrow(
+        """
+        SELECT d.id, d.query_id, q.answer, q.semantic_relevance, q.cost
+        FROM disputes d
+        JOIN queries q ON q.id = d.query_id
+        WHERE d.id = $1 AND d.status = 'open'
+        """,
+        dispute_id,
+    )
+    if not dispute:
+        return {"resolved": False, "reason": "dispute not found or already resolved"}
+
+    answer = (dispute["answer"] or "").strip().lower()
+    relevance = (
+        float(dispute["semantic_relevance"])
+        if dispute["semantic_relevance"] is not None
+        else None
+    )
+    cost = dispute["cost"] or Decimal("0")
+
+    no_answer = (not answer) or any(m in answer for m in _NO_ANSWER_MARKERS)
+    low_relevance = relevance is not None and relevance < threshold
+
+    if no_answer:
+        resolution, refund_amount, rule = "resolved_buyer", cost, "no_answer_delivered"
+    elif low_relevance:
+        resolution, refund_amount, rule = "resolved_buyer", cost, f"low_relevance({relevance}<{threshold})"
+    else:
+        resolution, refund_amount, rule = "resolved_seller", Decimal("0"), f"answer_relevant(relevance={relevance})"
+
+    logger.info(f"AUTO_RESOLVE | dispute={dispute_id} | rule={rule} | -> {resolution}")
+
+    result = await resolve_dispute(
+        dispute_id=dispute_id,
+        resolution=resolution,
+        refund_amount=refund_amount,
+        resolver_id=None,  # system / platform rule
+        notes=f"Auto-resolved by platform rule: {rule}",
+    )
+    result["auto_rule"] = rule
+    return result
+
+
+# ============================================
 # Dashboard: Transaction Summary
 # ============================================
 
