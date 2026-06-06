@@ -23,11 +23,20 @@ def compile_contract():
         output_values=["abi", "bin"],
         solc_version="0.8.20"
     )
-    
-    # Get the contract (key format: '<filename>:<contract_name>')
-    contract_key = "ContextMarketEscrow.sol:ContextMarketEscrow"
+
+    # compile_source labels the contract '<stdin>:ContextMarketEscrow'.
+    # Find the key ending in ':ContextMarketEscrow' so this is robust to
+    # whatever prefix solcx uses.
+    contract_key = next(
+        (k for k in compiled if k.endswith(":ContextMarketEscrow")),
+        None,
+    )
+    if contract_key is None:
+        raise RuntimeError(
+            f"ContextMarketEscrow not found in compiled output. Keys: {list(compiled)}"
+        )
     contract_interface = compiled[contract_key]
-    
+
     return contract_interface["abi"], contract_interface["bin"]
 
 def deploy_to_base(
